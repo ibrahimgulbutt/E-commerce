@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Search Results{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="my-4">Search Results</h1>
+    <p>Showing results for: <strong>{{ query }}</strong></p>
+
+    {% if products %}
+        <div class="row">
+            {% for product in products %}
+            <div class="col-md-4">
+                <div class="card mb-4">
+                    <img src="{{ url_for('static', filename=product.image) }}" class="card-img-top" alt="{{ product.name }}">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ product.name }}</h5>
+                        <p class="card-text">{{ product.description }}</p>
+                        {% if product.sale_percentage > 0 %}
+                            <p class="card-text text-danger">Discount: {{ product.sale_percentage }}% off</p>
+                            <p class="card-text">
+                                <del>${{ product.price }}</del> 
+                                ${{ product.price * (1 - product.sale_percentage / 100) }}
+                            </p>
+                        {% else %}
+                            <p class="card-text">${{ product.price }}</p>
+                        {% endif %}
+                        <a href="{{ url_for('product_detail', product_id=product.id) }}" class="btn btn-primary">View Details</a>
+                        <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="post" class="mt-2">
+                            <input type="number" name="quantity" value="1" min="1" class="form-control mb-2" style="width: auto; display: inline-block;">
+                            <button type="submit" class="btn btn-success">Add to Cart</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>No products found matching your search criteria.</p>
+    {% endif %}
+    <a href="{{ url_for('home') }}" class="btn btn-secondary mt-4">Back to Home</a>
+</div>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Sale - E-commerce Website{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="my-4">Sale</h1>
+    
+    <!-- Filter Dropdown -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <form method="get" action="{{ url_for('sale') }}">
+                <div class="form-group">
+                    <label for="sort">Sort by:</label>
+                    <select id="sort" name="sort" class="form-control" onchange="this.form.submit()">
+                        <option value="" disabled selected>Select sort order</option>
+                        <option value="price_asc" {% if request.args.get('sort') == 'price_asc' %}selected{% endif %}>Price: Low to High</option>
+                        <option value="price_desc" {% if request.args.get('sort') == 'price_desc' %}selected{% endif %}>Price: High to Low</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row">
+        {% for product in products %}
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <img src="{{ product.image }}" class="card-img-top" alt="{{ product.name }}">
+                <div class="card-body">
+                    <h5 class="card-title">{{ product.name }}</h5>
+                    <p class="card-text">{{ product.description }}</p>
+                    {% if product.sale_percentage > 0 %}
+                    <p class="card-text">
+                        <strong>Price:</strong> 
+                        <span class="text-muted" style="text-decoration: line-through;">${{ product.price }}</span> 
+                        <span class="text-danger">${{ product.price - (product.price * product.sale_percentage / 100) }}</span>
+                    </p>
+                    <p class="card-text"><strong>Sale:</strong> {{ product.sale_percentage }}% off</p>
+                    {% else %}
+                    <p class="card-text"><strong>Price:</strong> ${{ product.price }}</p>
+                    {% endif %}
+                    <a href="{{ url_for('product_detail', product_id=product.id) }}" class="btn btn-primary">View Details</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

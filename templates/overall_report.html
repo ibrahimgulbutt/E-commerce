@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Overall Sales Report{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="my-4">Overall Sales Report</h1>
+
+    <h2>Sales Over Time</h2>
+    <canvas id="overallSalesChart"></canvas>
+
+    <h2 class="my-4">Top Products</h2>
+    <ul class="list-group">
+        {% for product in top_products %}
+            <li class="list-group-item position-relative">
+                <span class="product-name">
+                    {{ loop.index }}. {{ product.name }}
+                </span>
+                <span class="badge bg-primary rounded-pill">{{ product.total_sales }} units sold</span>
+                <div class="hover-card card shadow">
+                    <img src="{{  product.image }}" class="card-img-top" alt="{{ product.name }}">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ product.name }}</h5>
+                    </div>
+                </div>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <h2 class="my-4">Sales Prediction</h2>
+    <canvas id="salesPredictionChart"></canvas>
+
+    <a href="{{ url_for('home') }}" class="btn btn-secondary mt-4">Back to Home</a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Embedding JSON data for sales -->
+<script type="application/json" id="sales-data">
+    {{ overall_sales_data|tojson }}
+</script>
+
+<!-- Embedding JSON data for sales prediction -->
+<script type="application/json" id="prediction-data">
+    {
+        "labels": {{ prediction_labels|tojson }},
+        "data": {{ prediction_data|tojson }}
+    }
+</script>
+
+<script>
+    // Parse the JSON data
+    var overallSalesData = JSON.parse(document.getElementById('sales-data').textContent);
+    var predictionData = JSON.parse(document.getElementById('prediction-data').textContent);
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Sales Over Time Chart
+        var overallCtx = document.getElementById('overallSalesChart').getContext('2d');
+        
+        var labels = overallSalesData.map(function(sale) {
+            return sale.date;
+        });
+        var data = overallSalesData.map(function(sale) {
+            return sale.quantity_sold;
+        });
+
+        new Chart(overallCtx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Quantity Sold',
+                    data: data,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Quantity Sold'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Sales Prediction Chart
+        var predictionCtx = document.getElementById('salesPredictionChart').getContext('2d');
+
+        new Chart(predictionCtx, {
+            type: 'line',
+            data: {
+                labels: predictionData.labels,
+                datasets: [{
+                    label: 'Predicted Sales',
+                    data: predictionData.data,
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Month'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Predicted Quantity Sold'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Hover effect for product names
+        document.querySelectorAll('.product-name').forEach(item => {
+            item.addEventListener('mouseover', event => {
+                const hoverCard = event.target.nextElementSibling.nextElementSibling;
+                hoverCard.style.display = 'block';
+            });
+
+            item.addEventListener('mouseout', event => {
+                const hoverCard = event.target.nextElementSibling.nextElementSibling;
+                hoverCard.style.display = 'none';
+            });
+        });
+    });
+</script>
+
+<!-- Custom CSS -->
+<style>
+    .hover-card {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 200px;
+        z-index: 1000;
+        background-color: white;
+    }
+    .list-group-item:hover .hover-card {
+        display: block;
+    }
+</style>
+{% endblock %}
