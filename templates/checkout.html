@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Checkout{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <h1 class="mb-4">Checkout</h1>
+
+    <form method="post" action="{{ url_for('process_checkout') }}">
+        <div class="row">
+            <!-- Billing Information -->
+            <div class="col-md-6">
+                <h3>Billing Information</h3>
+                <div class="mb-3">
+                    <label for="billing-name" class="form-label">Full Name</label>
+                    <input type="text" class="form-control" id="billing-name" name="billing_name" required>
+                </div>
+                <div class="mb-3">
+                    <label for="billing-email" class="form-label">Email Address</label>
+                    <input type="email" class="form-control" id="billing-email" name="billing_email" required>
+                </div>
+                <div class="mb-3">
+                    <label for="billing-address" class="form-label">Address</label>
+                    <input type="text" class="form-control" id="billing-address" name="billing_address" required>
+                </div>
+                <div class="mb-3">
+                    <label for="billing-city" class="form-label">City</label>
+                    <input type="text" class="form-control" id="billing-city" name="billing_city" required>
+                </div>
+                <div class="mb-3">
+                    <label for="billing-state" class="form-label">State/Province</label>
+                    <input type="text" class="form-control" id="billing-state" name="billing_state" required>
+                </div>
+                <div class="mb-3">
+                    <label for="billing-zip" class="form-label">Zip/Postal Code</label>
+                    <input type="text" class="form-control" id="billing-zip" name="billing_zip" required>
+                </div>
+                <div class="mb-3">
+                    <label for="billing-country" class="form-label">Country</label>
+                    <input type="text" class="form-control" id="billing-country" name="billing_country" required>
+                </div>
+            </div>
+
+            <!-- Shipping Information -->
+            <div class="col-md-6">
+                <h3>Shipping Information</h3>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="same-as-billing" name="same_as_billing">
+                    <label class="form-check-label" for="same-as-billing">Same as billing address</label>
+                </div>
+                <div id="shipping-info">
+                    <div class="mb-3">
+                        <label for="shipping-name" class="form-label">Full Name</label>
+                        <input type="text" class="form-control" id="shipping-name" name="shipping_name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="shipping-address" class="form-label">Address</label>
+                        <input type="text" class="form-control" id="shipping-address" name="shipping_address">
+                    </div>
+                    <div class="mb-3">
+                        <label for="shipping-city" class="form-label">City</label>
+                        <input type="text" class="form-control" id="shipping-city" name="shipping_city">
+                    </div>
+                    <div class="mb-3">
+                        <label for="shipping-state" class="form-label">State/Province</label>
+                        <input type="text" class="form-control" id="shipping-state" name="shipping_state">
+                    </div>
+                    <div class="mb-3">
+                        <label for="shipping-zip" class="form-label">Zip/Postal Code</label>
+                        <input type="text" class="form-control" id="shipping-zip" name="shipping_zip">
+                    </div>
+                    <div class="mb-3">
+                        <label for="shipping-country" class="form-label">Country</label>
+                        <input type="text" class="form-control" id="shipping-country" name="shipping_country">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Order Summary -->
+            <div class="col-md-6">
+                <h3 class="mt-4">Order Summary</h3>
+                <ul class="list-group mb-3">
+                    {% for item in cart_items %}
+                    <li class="list-group-item d-flex justify-content-between">
+                        <div>
+                            <h6 class="my-0" style="color: red;">{{ item.product.name }}</h6>
+                            <small class="text-muted">Quantity: {{ item.quantity }}</small>
+                        </div>
+                        <span class="text-muted">${{ item.product.price * item.quantity }}</span>
+                    </li>
+                    {% endfor %}
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Total (USD)</span>
+                        <strong>${{ total_price }}</strong>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Payment Information -->
+            <div class="col-md-6">
+                <h3 class="mt-4">Payment</h3>
+                <div class="mb-3">
+                    <label for="card-name" class="form-label">Name on Card</label>
+                    <input type="text" class="form-control" id="card-name" name="card_name" required>
+                </div>
+                <div class="mb-3">
+                    <label for="card-number" class="form-label">Credit Card Number</label>
+                    <input type="text" class="form-control" id="card-number" name="card_number" required>
+                </div>
+                <div class="mb-3">
+                    <label for="card-expiry" class="form-label">Expiration Date</label>
+                    <input type="text" class="form-control" id="card-expiry" name="card_expiry" placeholder="MM/YY" required>
+                </div>
+                <div class="mb-3">
+                    <label for="card-cvc" class="form-label">CVC</label>
+                    <input type="text" class="form-control" id="card-cvc" name="card_cvc" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg btn-block">Place Order</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.getElementById('same-as-billing').addEventListener('change', function () {
+        const shippingInfo = document.getElementById('shipping-info');
+        shippingInfo.style.display = this.checked ? 'none' : 'block';
+    });
+</script>
+{% endblock %}

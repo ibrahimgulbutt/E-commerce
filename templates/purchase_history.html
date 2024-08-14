@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Purchase History{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <h1 class="mb-4">Purchase History</h1>
+
+    {% if purchases %}
+        <!-- Date Dropdown -->
+        <div class="mb-4">
+            <label for="date-dropdown" class="form-label">Select Date</label>
+            <select id="date-dropdown" class="form-select">
+                <option value="">-- Select a Date --</option>
+                {% for date, total in grouped_purchases.items() %}
+                <option value="{{ date }}">{{ date }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Purchase Summary Table -->
+        <div id="purchase-summary" style="display: none;">
+            <h3>Order Summary for <span id="selected-date"></span></h3>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Product Name</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                        <th>Total</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="summary-body">
+                    <!-- Summary will be populated here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Purchase History Table (All Purchases) -->
+        <div id="all-purchases">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Total Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for date, total in grouped_purchases.items() %}
+                    <tr>
+                        <td>{{ date }}</td>
+                        <td>${{ total }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    {% else %}
+        <p>You have no purchase history yet.</p>
+    {% endif %}
+
+    <a href="{{ url_for('home') }}" class="btn btn-primary mt-4">Back to Home</a>
+</div>
+
+<!-- Inline JSON Script Tag -->
+<script type="application/json" id="purchases-data">
+    {{ purchases | tojson }}
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const purchases = JSON.parse(document.getElementById('purchases-data').textContent);
+        const dateDropdown = document.getElementById('date-dropdown');
+        const purchaseSummary = document.getElementById('purchase-summary');
+        const selectedDateSpan = document.getElementById('selected-date');
+        const summaryBody = document.getElementById('summary-body');
+
+        dateDropdown.addEventListener('change', function() {
+            const selectedDate = this.value;
+            if (selectedDate) {
+                selectedDateSpan.textContent = selectedDate;
+                summaryBody.innerHTML = '';
+
+                const filteredPurchases = purchases.filter(purchase => purchase.purchase_date.startsWith(selectedDate));
+                filteredPurchases.forEach(purchase => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${purchase.product_name}</td>
+                        <td>${purchase.quantity}</td>
+                        <td>$${purchase.product_price}</td>
+                        <td>$${(purchase.product_price * purchase.quantity).toFixed(2)}</td>
+                        <td>${purchase.purchase_date.split(' ')[1]}</td>
+                    `;
+                    summaryBody.appendChild(row);
+                });
+
+                purchaseSummary.style.display = 'block';
+            } else {
+                purchaseSummary.style.display = 'none';
+            }
+        });
+    });
+</script>
+
+{% endblock %}

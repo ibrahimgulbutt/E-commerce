@@ -12,6 +12,9 @@ body {
     margin: 0;
     padding: 0;
 }
+.form-label{
+    color: black;
+}
 
 .form-container {
     width: 300px;
@@ -31,7 +34,8 @@ body {
     padding: 10px;
     margin: 5px 0;
     border-radius: 5px;
-    border: 1px solid #ccc;
+    border: 1px solid black;
+    background-color: white;
 }
 
 @keyframes gradientChange {
@@ -49,7 +53,7 @@ body {
 .btn {
     width: 100%;
     padding: 10px;
-    background: linear-gradient(45deg, #7fffd4, #e0ffff, #00ced1, #afeeee);
+    background: linear-gradient(45deg, #8fbc8f, #4682b4, #5f9ea0, #2e8b57);
     background-size: 400% 400%; /* Larger size for smoother animation */
     color: #fff;
     border: none;
@@ -57,6 +61,7 @@ body {
     cursor: pointer;
     animation: gradientChange 10s ease infinite; /* Longer duration for smooth transition */
 }
+
 
 
 

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}About Us - Genomi{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-6">
+            <h2>About Genomi</h2>
+            <p>Welcome to Genomi, where fashion meets innovation. Established in 2024, we are a contemporary clothing brand committed to offering high-quality, stylish apparel that reflects the dynamic lifestyle of modern individuals. Our collections are crafted with precision, blending timeless designs with the latest trends to ensure you always look your best.</p>
+            <p>At Genomi, we believe in the power of fashion as a form of self-expression. Our mission is to provide you with versatile pieces that empower you to express your unique style. Whether you're dressing up for a special occasion or keeping it casual, our curated selection has something for everyone.</p>
+            <p>Our dedication to sustainability is at the core of our brand. We are passionate about making a positive impact on the environment, which is why we prioritize eco-friendly materials and ethical production practices. We are constantly innovating to reduce our carbon footprint and ensure that our products are as sustainable as they are stylish.</p>
+        </div>
+        <div class="col-md-6">
+            <img src="{{ url_for('static', filename='images/logo.jpeg') }}" alt="About Genomi" class="img-fluid rounded">
+        </div>
+    </div>
+
+    <div class="row mt-5">
+        <div class="col-md-12 text-center">
+            <h3>Our Values</h3>
+        </div>
+        <div class="col-md-4 text-center">
+            <h4>Innovation</h4>
+            <p>We are always looking ahead, embracing the latest technologies and fashion trends to bring you cutting-edge designs.</p>
+        </div>
+        <div class="col-md-4 text-center">
+            <h4>Sustainability</h4>
+            <p>We are committed to reducing our environmental impact by using sustainable materials and ethical manufacturing processes.</p>
+        </div>
+        <div class="col-md-4 text-center">
+            <h4>Quality</h4>
+            <p>Our products are made with the utmost attention to detail, ensuring that every piece meets the highest standards of quality.</p>
+        </div>
+    </div>
+
+    <div class="row mt-5">
+        <div class="col-md-12 text-center">
+            <h3>Join Our Journey</h3>
+            <p>We invite you to explore our collections and discover the perfect pieces to complement your wardrobe. Follow us on social media to stay updated on our latest arrivals, special offers, and behind-the-scenes stories. At Genomi, we are more than just a clothing brand – we are a community. Join us as we redefine fashion, one step at a time.</p>
+            <a href="{{ url_for('new_collection') }}" class="btn btn-primary">Explore Our Collection</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

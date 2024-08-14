@@ -15,12 +15,12 @@
 <!-- Featured Products Section -->
 <div class="container">
     <h2 class="my-4">Featured Products</h2>
-    <div class="row g-0">
+    <div class="row g-3"> <!-- Updated 'g-0' to 'g-3' for spacing between cards -->
         <!-- Column for smaller cards -->
         <div class="col-lg-8">
             <div class="row">
                 <!-- Sunglasses Card -->
-                <div class="col-lg-6 col-md-6 mb-0">
+                <div class="col-lg-6 col-md-6 mb-3"> <!-- Added 'mb-3' for bottom margin -->
                     <div class="card" style="height: 300px; border: none;">
                         <div style="position: relative; height: 100%;">
                             <div class="nav-buttons" style="position: absolute; top: 10px; left: 10px; z-index: 2;">
@@ -32,7 +32,7 @@
                 </div>
 
                 <!-- Sneakers Card -->
-                <div class="col-lg-6 col-md-6 mb-0">
+                <div class="col-lg-6 col-md-6 mb-3"> <!-- Added 'mb-3' for bottom margin -->
                     <div class="card" style="height: 300px; border: none;">
                         <div style="position: relative; height: 100%;">
                             <div class="nav-buttons" style="position: absolute; top: 10px; left: 10px; z-index: 2;">
@@ -44,7 +44,7 @@
                 </div>
 
                 <!-- Shoes Collection Card -->
-                <div class="col-lg-12 col-md-12 mb-0">
+                <div class="col-lg-12 col-md-12 mb-3"> <!-- Added 'mb-3' for bottom margin -->
                     <div class="card" style="height: 300px; border: none;">
                         <div style="position: relative; height: 100%;">
                             <div class="nav-buttons" style="position: absolute; top: 10px; left: 10px; z-index: 2;">
@@ -58,7 +58,7 @@
         </div>
 
         <!-- T-Shirts Collection Card -->
-        <div class="col-lg-4 col-md-6 mb-0">
+        <div class="col-lg-4 col-md-6 mb-3"> <!-- Added 'mb-3' for bottom margin -->
             <div class="card" style="height: 600px; border: none;">
                 <div style="position: relative; height: 100%;">
                     <div class="nav-buttons" style="position: absolute; top: 10px; left: 10px; z-index: 2;">
@@ -84,10 +84,9 @@
     }
 
     /* Remove padding, margin, and border between cards */
-    .row.g-0 > [class*="col-"] {
+    .row.g-3 > [class*="col-"] {
         padding-right: 0;
         padding-left: 0;
-        margin-bottom: 0;
     }
     
     .card {

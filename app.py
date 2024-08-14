@@ -32,6 +32,7 @@ class Product(db.Model):
     category = db.Column(db.String(50), nullable=False)
     sale_percentage = db.Column(db.Float, default=0)  # Sale percentage, 0 means no sale
     quantity = db.Column(db.Integer, nullable=False, default=0)  # Quantity in stock
+    comments = db.relationship('Comment', backref='product', lazy=True)  # Relationship with comments
 
     def __repr__(self):
         return f'<Product {self.name}>'
@@ -70,6 +71,19 @@ class WishlistItem(db.Model):
 
 
 
+class PurchaseHistory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    product_name = db.Column(db.String(100), nullable=False)
+    product_price = db.Column(db.Float, nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    purchase_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    
+
+    def __repr__(self):
+        return f'<PurchaseHistory {self.product_name} by User {self.user_id}>'
+
+# Update the User model to include the relationship
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
@@ -77,10 +91,27 @@ class User(db.Model, UserMixin):
     password = db.Column(db.String(60), nullable=False)
     cart_items = db.relationship('CartItem', backref='user', lazy=True)
     wishlist_items = db.relationship('WishlistItem', backref='user', lazy=True)
-    is_admin = db.Column(db.Boolean, default=False)  # New field for admin check
+    purchase_history = db.relationship('PurchaseHistory', backref='user', lazy=True)
+    comments = db.relationship('Comment', backref='user', lazy=True)  # Relationship with comments
+    is_admin = db.Column(db.Boolean, default=False)
 
     def __repr__(self):
         return f'<User {self.username}>'
+
+    
+class Comment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    date_posted = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    image_url = db.Column(db.String(255), nullable=True)  # New column for storing the image URL
+    rating = db.Column(db.Integer, nullable=False, default=0)  # New column for rating
+
+    def __repr__(self):
+        return f'<Comment {self.content[:20]}... by User {self.user_id}>'
+
+
 
 
 # Forms
@@ -147,7 +178,6 @@ def login():
         user = User.query.filter_by(email=form.email.data).first()
         if user and check_password_hash(user.password, form.password.data):
             login_user(user, remember=form.remember.data)
-            flash('Login successful!', 'success')
             return redirect(url_for('home'))
         else:
             flash('Login unsuccessful. Please check your email and password.', 'danger')
@@ -162,11 +192,113 @@ def logout():
     logout_user()
     return redirect(url_for('home'))
 
+@app.route('/checkout', methods=['GET', 'POST'])
+@login_required
+def checkout():
+    cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
+    total_price = sum(item.product.price * item.quantity for item in cart_items)
+
+    if request.method == 'POST':
+        return redirect(url_for('process_checkout'))
+
+    return render_template('checkout.html', cart_items=cart_items, total_price=total_price)
+
+
+
+@app.route('/process_checkout', methods=['POST'])
+@login_required
+def process_checkout():
+    # Extract billing information from the form
+    billing_name = request.form.get('billing_name')
+    billing_email = request.form.get('billing_email')
+    billing_address = request.form.get('billing_address')
+    billing_city = request.form.get('billing_city')
+    billing_state = request.form.get('billing_state')
+    billing_zip = request.form.get('billing_zip')
+    billing_country = request.form.get('billing_country')
+    
+    # Extract payment information from the form
+    card_name = request.form.get('card_name')
+    card_number = request.form.get('card_number')
+    card_expiry = request.form.get('card_expiry')
+    card_cvc = request.form.get('card_cvc')
+
+    # Retrieve the cart items
+    cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
+    total_price = 0
+    
+    for item in cart_items:
+        # Calculate total price
+        total_price += item.product.price * item.quantity
+        
+        # Create SalesRecord
+        sales_record = SalesRecord(
+            product_id=item.product_id,
+            quantity_sold=item.quantity,
+            sale_date=datetime.utcnow()  # Update with current date and time
+        )
+        db.session.add(sales_record)
+        
+        # Update product quantity in stock
+        item.product.quantity -= item.quantity
+        
+        # Add PurchaseHistory record
+        purchase_history = PurchaseHistory(
+            user_id=current_user.id,
+            product_name=item.product.name,
+            product_price=item.product.price,
+            quantity=item.quantity,
+            purchase_date=datetime.utcnow()  # Update with current date and time
+        )
+        db.session.add(purchase_history)
+        
+        # Remove the item from the cart
+        db.session.delete(item)
+    
+    db.session.commit()
+
+    # Render the confirmation page with the correct total price
+    return render_template('proceed_checkout.html', total_price=total_price)
+
+
+@app.route('/purchase_history')
+@login_required
+def purchase_history():
+    user_id = current_user.id
+
+    # Get all purchases for the logged-in user
+    purchases = PurchaseHistory.query.filter_by(user_id=user_id).all()
+
+    # Convert purchases to a serializable format
+    purchases_list = [
+        {
+            'purchase_date': purchase.purchase_date.strftime('%Y-%m-%d %H:%M:%S'),
+            'product_name': purchase.product_name,
+            'product_price': purchase.product_price,
+            'quantity': purchase.quantity
+        }
+        for purchase in purchases
+    ]
+
+    # Group purchases by date and calculate totals
+    grouped_purchases = {}
+    for purchase in purchases:
+        date_key = purchase.purchase_date.strftime('%Y-%m-%d')
+        if date_key not in grouped_purchases:
+            grouped_purchases[date_key] = 0
+        grouped_purchases[date_key] += purchase.product_price * purchase.quantity
+
+    return render_template('purchase_history.html', purchases=purchases_list, grouped_purchases=grouped_purchases)
+
+
+
+
+
+
 @app.route('/admin/add-product', methods=['GET', 'POST'])
 @login_required
 def add_product():
     if not current_user.is_admin:
-        flash('Access denied.', 'danger')
         return redirect(url_for('home'))
     
     if request.method == 'POST':
@@ -189,7 +321,6 @@ def add_product():
         )
         db.session.add(product)
         db.session.commit()
-        flash(f'Product {name} added successfully.', 'success')
         return redirect(url_for('home'))
     
     return render_template('add_product.html')
@@ -198,7 +329,6 @@ def add_product():
 @login_required
 def update_product(product_id):
     if not current_user.is_admin:
-        flash('Access denied.', 'danger')
         return redirect(url_for('home'))
     
     product = Product.query.get_or_404(product_id)
@@ -213,7 +343,6 @@ def update_product(product_id):
         product.quantity = int(request.form.get('quantity'))
         
         db.session.commit()
-        flash(f'Product {product.name} updated successfully.', 'success')
         return redirect(url_for('home'))
     
     return render_template('update_product.html', product=product)
@@ -222,7 +351,6 @@ def update_product(product_id):
 @login_required
 def remove_product(product_id):
     if not current_user.is_admin:
-        flash('Access denied.', 'danger')
         return redirect(url_for('home'))
     
     product = Product.query.get_or_404(product_id)
@@ -236,7 +364,6 @@ def remove_product(product_id):
     db.session.delete(product)
     db.session.commit()
     
-    flash(f'Product {product.name} removed successfully.', 'success')
     return redirect(url_for('home'))
 
 @app.route('/product/<int:product_id>/report', methods=['GET'])
@@ -291,23 +418,25 @@ def overall_report():
     # Convert monthly sales into a sorted list of months
     sorted_months = sorted(monthly_sales.items())
 
-    # Calculate sales predictions using a simple moving average
-    num_months_for_prediction = 3  # Using the last 3 months for the moving average
     prediction_labels = []
     prediction_data = []
 
-    for i in range(num_months_for_prediction, len(sorted_months)):
-        avg_sales = sum([x[1] for x in sorted_months[i - num_months_for_prediction:i]]) / num_months_for_prediction
-        prediction_labels.append(sorted_months[i][0])
-        prediction_data.append(avg_sales)
+    if sorted_months:
+        # Calculate sales predictions using a simple moving average
+        num_months_for_prediction = 3  # Using the last 3 months for the moving average
 
-    # Adding future months for prediction
-    last_month = datetime.strptime(sorted_months[-1][0], '%Y-%m')
-    for i in range(1, 6):  # Predicting for the next 5 months
-        future_month = (last_month + timedelta(days=i * 30)).strftime('%Y-%m')
-        avg_sales = sum([x[1] for x in sorted_months[-num_months_for_prediction:]]) / num_months_for_prediction
-        prediction_labels.append(future_month)
-        prediction_data.append(avg_sales)
+        for i in range(num_months_for_prediction, len(sorted_months)):
+            avg_sales = sum([x[1] for x in sorted_months[i - num_months_for_prediction:i]]) / num_months_for_prediction
+            prediction_labels.append(sorted_months[i][0])
+            prediction_data.append(avg_sales)
+
+        # Adding future months for prediction
+        last_month = datetime.strptime(sorted_months[-1][0], '%Y-%m')
+        for i in range(1, 6):  # Predicting for the next 5 months
+            future_month = (last_month + timedelta(days=i * 30)).strftime('%Y-%m')
+            avg_sales = sum([x[1] for x in sorted_months[-num_months_for_prediction:]]) / num_months_for_prediction
+            prediction_labels.append(future_month)
+            prediction_data.append(avg_sales)
 
     overall_sales_data = [
         {
@@ -324,6 +453,7 @@ def overall_report():
         prediction_labels=prediction_labels,
         prediction_data=prediction_data
     )
+
 
 @app.route('/new-collection', methods=['GET'])
 def new_collection():
@@ -350,12 +480,61 @@ def product_detail(product_id):
     in_wishlist_route = 'add_to_wishlist'
 
     if current_user.is_authenticated:
+        # Check if the product is in the user's wishlist
         wishlist_item = WishlistItem.query.filter_by(user_id=current_user.id, product_id=product_id).first()
         if wishlist_item:
             in_wishlist = True
             in_wishlist_route = 'remove_from_wishlist'
 
-    return render_template('product_detail.html', product=product, in_wishlist=in_wishlist, in_wishlist_route=in_wishlist_route)
+        # Handle the review form submission
+        if request.method == 'POST':
+            if 'comment' in request.form:  # Check if the form submission is for adding a comment
+                comment_content = request.form.get('comment')
+                rating = request.form.get('rating')
+                image_url = request.form.get('image_url')  # Retrieve the image URL from the form
+
+                if comment_content and rating:
+                    new_comment = Comment(
+                        content=comment_content,
+                        rating=int(rating),
+                        user_id=current_user.id,
+                        product_id=product.id,
+                        image_url=image_url  # Store the image URL directly
+                    )
+
+                    db.session.add(new_comment)
+                    db.session.commit()
+                    return redirect(url_for('product_detail', product_id=product.id))
+
+            elif 'delete_comment' in request.form:  # Handle the comment deletion
+                comment_id = request.form.get('delete_comment')
+                comment = Comment.query.get_or_404(comment_id)
+
+                if comment.user_id == current_user.id:
+                    db.session.delete(comment)
+                    db.session.commit()
+                    flash('Comment deleted successfully.', 'success')
+                else:
+                    flash('You are not authorized to delete this comment.', 'danger')
+
+                return redirect(url_for('product_detail', product_id=product.id))
+
+    # Fetch all comments for the product
+    comments = Comment.query.filter_by(product_id=product_id).order_by(Comment.date_posted.desc()).all()
+    return render_template('product_detail.html', product=product, in_wishlist=in_wishlist, in_wishlist_route=in_wishlist_route, comments=comments)
+
+
+@app.route('/delete_comment/<int:comment_id>', methods=['POST'])
+@login_required
+def delete_comment(comment_id):
+    comment = Comment.query.get_or_404(comment_id)
+    if comment.user_id == current_user.id:
+        db.session.delete(comment)
+        db.session.commit()
+        flash('Comment deleted successfully.', 'success')
+    else:
+        flash('You are not authorized to delete this comment.', 'danger')
+    return redirect(url_for('product_detail', product_id=comment.product_id))
 
 
 
@@ -363,7 +542,6 @@ def product_detail(product_id):
 def search():
     query = request.args.get('query', '').strip()  # Get and strip the search query
     if not query:
-        flash('Search query cannot be empty.', 'warning')
         return redirect(url_for('home'))
     
     # Perform the search with case-insensitive matching
@@ -398,7 +576,6 @@ def add_to_cart(product_id):
         db.session.add(cart_item)
 
     db.session.commit()
-    flash(f'Added {quantity} {product.name}(s) to your cart.', 'success')
     return redirect(url_for('view_cart'))
 
 
@@ -408,7 +585,6 @@ def remove_from_cart(item_id):
     cart_item = CartItem.query.get_or_404(item_id)
     db.session.delete(cart_item)
     db.session.commit()
-    flash('Item removed from your cart.', 'success')
     return redirect(url_for('view_cart'))
 
 
@@ -416,7 +592,18 @@ def remove_from_cart(item_id):
 @login_required
 def view_wishlist():
     wishlist_items = WishlistItem.query.filter_by(user_id=current_user.id).all()
-    return render_template('wishlist.html', wishlist_items=wishlist_items)
+
+    # Remove invalid wishlist items (i.e., items pointing to deleted products)
+    valid_wishlist_items = []
+    for item in wishlist_items:
+        if item.product is not None:
+            valid_wishlist_items.append(item)
+        else:
+            db.session.delete(item)
+            db.session.commit()
+
+    return render_template('wishlist.html', wishlist_items=valid_wishlist_items)
+
 
 
 @app.route('/add-to-wishlist/<int:product_id>', methods=['POST'])
@@ -426,12 +613,11 @@ def add_to_wishlist(product_id):
     wishlist_item = WishlistItem.query.filter_by(product_id=product_id, user_id=current_user.id).first()
     
     if wishlist_item:
-        flash('Product is already in your wishlist.', 'info')
+        pass
     else:
         wishlist_item = WishlistItem(product_id=product_id, user_id=current_user.id)
         db.session.add(wishlist_item)
         db.session.commit()
-        flash(f'Added {product.name} to your wishlist.', 'success')
     
     # Redirect to the referring page
     return redirect(request.referrer)
@@ -442,7 +628,6 @@ def remove_from_wishlist(product_id):
     wishlist_item = WishlistItem.query.filter_by(product_id=product_id, user_id=current_user.id).first_or_404()
     db.session.delete(wishlist_item)
     db.session.commit()
-    flash('Item removed from your wishlist.', 'success')
     
     # Redirect to the referring page
     return redirect(request.referrer )
@@ -458,7 +643,7 @@ def initialize_db():
 
 @app.route('/about')
 def about():
-    pass
+    return render_template('aboutUs.html')
 
 from faker import Faker
 import random
@@ -525,8 +710,10 @@ def create_admin_user():
     db.session.commit()
     print('Admin user created successfully.')
 
+
 if __name__ == '__main__':
     with app.app_context():
+        #db.drop_all()
         db.create_all()
         create_admin_user()
     app.run(debug=True)

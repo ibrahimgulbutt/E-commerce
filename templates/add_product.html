@@ -5,36 +5,114 @@
 {% block content %}
 <div class="container">
     <h1 class="my-4">Add Product</h1>
-    <form action="{{ url_for('add_product') }}" method="post">
-        <div class="mb-3">
-            <label for="name" class="form-label">Name</label>
-            <input type="text" class="form-control" id="name" name="name" required>
+    <div class="row">
+        <!-- Product Form -->
+        <div class="col-md-6">
+            <form action="{{ url_for('add_product') }}" method="post">
+                <div class="mb-3">
+                    <label for="name" class="form-label">Name</label>
+                    <input type="text" class="form-control" id="name" name="name" required oninput="updatePreview()">
+                </div>
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <textarea class="form-control" id="description" name="description" required oninput="updatePreview()"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="price" class="form-label">Price</label>
+                    <input type="number" class="form-control" id="price" name="price" step="0.01" required oninput="updatePreview()">
+                </div>
+                <div class="mb-3">
+                    <label for="image" class="form-label">Image URL</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="image" name="image" required oninput="updatePreview()">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('file-input').click();">Browse Image</button>
+                        <input type="file" id="file-input" style="display: none;" accept="image/*" onchange="previewImageFromFile()">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="category" class="form-label">Category</label>
+                    <input type="text" class="form-control" id="category" name="category" required oninput="updatePreview()">
+                </div>
+                <div class="mb-3">
+                    <label for="sale_percentage" class="form-label">Sale Percentage</label>
+                    <input type="number" class="form-control" id="sale_percentage" name="sale_percentage" min="0" max="100" oninput="updatePreview()">
+                </div>
+                <div class="mb-3">
+                    <label for="quantity" class="form-label">Quantity</label>
+                    <input type="number" class="form-control" id="quantity" name="quantity" min="1" required oninput="updatePreview()">
+                </div>
+                <button type="submit" class="btn btn-primary">Add Product</button>
+            </form>
         </div>
-        <div class="mb-3">
-            <label for="description" class="form-label">Description</label>
-            <textarea class="form-control" id="description" name="description" required></textarea>
+
+        <!-- Live Preview Card -->
+        <div class="col-md-6">
+            <div class="card">
+                <img id="preview-image" src="https://via.placeholder.com/300" class="card-img-top" alt="Product Image">
+                <div class="card-body">
+                    <h5 class="card-title" id="preview-name">Product Name</h5>
+                    <p class="card-text" id="preview-description">Product description will appear here.</p>
+                    <p class="card-text"><strong>Category:</strong> <span id="preview-category">Category</span></p>
+                    <p class="card-text">
+                        <strong>Price:</strong> 
+                        <span id="preview-price">$0.00</span>
+                        <span id="preview-sale" class="text-danger"></span>
+                    </p>
+                </div>
+            </div>
         </div>
-        <div class="mb-3">
-            <label for="price" class="form-label">Price</label>
-            <input type="number" class="form-control" id="price" name="price" step="0.01" required>
-        </div>
-        <div class="mb-3">
-            <label for="image" class="form-label">Image URL</label>
-            <input type="text" class="form-control" id="image" name="image" required>
-        </div>
-        <div class="mb-3">
-            <label for="category" class="form-label">Category</label>
-            <input type="text" class="form-control" id="category" name="category" required>
-        </div>
-        <div class="mb-3">
-            <label for="sale_percentage" class="form-label">Sale Percentage</label>
-            <input type="number" class="form-control" id="sale_percentage" name="sale_percentage" min="0" max="100">
-        </div>
-        <div class="mb-3">
-            <label for="quantity" class="form-label">Quantity</label>
-            <input type="number" class="form-control" id="quantity" name="quantity" min="1" required>
-        </div>
-        <button type="submit" class="btn btn-primary">Add Product</button>
-    </form>
+    </div>
 </div>
+
+<script>
+    function updatePreview() {
+        // Update Name
+        const name = document.getElementById('name').value;
+        document.getElementById('preview-name').textContent = name ? name : 'Product Name';
+
+        // Update Description
+        const description = document.getElementById('description').value;
+        document.getElementById('preview-description').textContent = description ? description : 'Product description will appear here.';
+
+        // Update Price and Sale
+        const price = parseFloat(document.getElementById('price').value);
+        const salePercentage = parseFloat(document.getElementById('sale_percentage').value);
+        if (!isNaN(price)) {
+            document.getElementById('preview-price').textContent = `$${price.toFixed(2)}`;
+            if (!isNaN(salePercentage) && salePercentage > 0) {
+                const salePrice = price * (1 - salePercentage / 100);
+                document.getElementById('preview-sale').textContent = ` (On Sale: $${salePrice.toFixed(2)} with ${salePercentage}% off)`;
+            } else {
+                document.getElementById('preview-sale').textContent = '';
+            }
+        } else {
+            document.getElementById('preview-price').textContent = '$0.00';
+            document.getElementById('preview-sale').textContent = '';
+        }
+
+        // Update Category
+        const category = document.getElementById('category').value;
+        document.getElementById('preview-category').textContent = category ? category : 'Category';
+
+        // Update Image
+        const imageUrl = document.getElementById('image').value;
+        document.getElementById('preview-image').src = imageUrl ? imageUrl : 'https://via.placeholder.com/300';
+    }
+
+    function previewImageFromFile() {
+        const fileInput = document.getElementById('file-input');
+        const imageUrlInput = document.getElementById('image');
+        const previewImage = document.getElementById('preview-image');
+
+        const file = fileInput.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImage.src = e.target.result;
+                imageUrlInput.value = e.target.result; // Display Data URL in the input field
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+</script>
 {% endblock %}
