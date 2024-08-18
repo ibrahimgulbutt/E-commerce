@@ -98,6 +98,46 @@ class User(db.Model, UserMixin):
     def __repr__(self):
         return f'<User {self.username}>'
 
+
+
+class Order(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    order_date = db.Column(db.DateTime, default=datetime.utcnow)
+    total_price = db.Column(db.Float, nullable=False)
+    billing_name = db.Column(db.String(120), nullable=False)
+    billing_email = db.Column(db.String(120), nullable=False)
+    billing_address = db.Column(db.String(255), nullable=False)
+    billing_city = db.Column(db.String(120), nullable=False)
+    billing_state = db.Column(db.String(120), nullable=False)
+    billing_zip = db.Column(db.String(20), nullable=False)
+    billing_country = db.Column(db.String(120), nullable=False)
+    status = db.Column(db.String(50), nullable=False, default='Processing')
+
+    # Relationship to user
+    user = db.relationship('User', backref=db.backref('orders', lazy=True))
+    # Relationship to order details
+    order_details = db.relationship('OrderDetail', backref='order', lazy=True)
+
+    def __repr__(self):
+        return f'<Order {self.id}>'
+
+
+class OrderDetail(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    discount = db.Column(db.Float, default=0.0)  # Add discount if needed
+
+    # Relationship to product
+    product = db.relationship('Product', backref=db.backref('order_details', lazy=True))
+
+    def __repr__(self):
+        return f'<OrderDetail {self.id}>'
+
+
     
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -192,6 +232,96 @@ def logout():
     logout_user()
     return redirect(url_for('home'))
 
+@app.route('/print-order-slip/<int:order_id>')
+def print_order_slip(order_id):
+    # Fetch the order details from the database
+    order = Order.query.get(order_id)
+    if not order:
+        return "Order not found", 404
+
+    # Fetch order items
+    order_items = OrderDetail.query.filter_by(order_id=order_id).all()
+    products = [
+        {
+            'product_name': Product.query.get(detail.product_id).name,
+            'price': detail.price,
+            'quantity': detail.quantity,
+            'total': detail.quantity * detail.price
+        }
+        for detail in order_items
+    ]
+
+    # Calculate total amount
+    total_amount = sum(item['total'] for item in products)
+
+    # Pass order and products data to the template
+    return render_template('printable_slip.html', order=order, items=products, total_amount=total_amount)
+
+
+
+@app.route('/admin/order/update/<int:order_id>', methods=['GET', 'POST'])
+@login_required
+def update_order(order_id):
+    if not current_user.is_admin:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('home'))
+
+    order = Order.query.get_or_404(order_id)
+    
+    if request.method == 'POST':
+        order.status = request.form.get('status')
+        order.shipping_address = request.form.get('shipping_address')
+        # Update other order details as needed
+
+        db.session.commit()
+        flash('Order updated successfully.', 'success')
+        return redirect(url_for('admin_orders'))
+
+    return render_template('update_order.html', order=order)
+
+@app.route('/admin/order/delete/<int:order_id>', methods=['POST'])
+@login_required
+def delete_order(order_id):
+    if not current_user.is_admin:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('home'))
+
+    order = Order.query.get_or_404(order_id)
+    db.session.delete(order)
+    db.session.commit()
+    
+    flash('Order deleted successfully.', 'success')
+    return redirect(url_for('admin_orders'))
+
+@app.route('/admin/orders')
+@login_required
+def admin_orders():
+    if not current_user.is_admin:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('home'))
+
+    orders = Order.query.order_by(Order.order_date.desc()).all()
+    
+    formatted_orders = []
+    for order in orders:
+        formatted_orders.append({
+            'order_id': order.id,
+            'user': order.user.username,
+            'billing_name': order.billing_name,
+            'billing_email': order.billing_email,
+            'billing_address': f"{order.billing_address}, {order.billing_city}, {order.billing_state}, {order.billing_zip}, {order.billing_country}",
+            'order_date': order.order_date,
+            'total_price': order.total_price,
+            'status': order.status
+        })
+
+    return render_template('admin_orders.html', orders=formatted_orders)
+
+
+
+
+
+
 @app.route('/checkout', methods=['GET', 'POST'])
 @login_required
 def checkout():
@@ -202,6 +332,7 @@ def checkout():
         return redirect(url_for('process_checkout'))
 
     return render_template('checkout.html', cart_items=cart_items, total_price=total_price)
+
 
 
 
@@ -216,8 +347,8 @@ def process_checkout():
     billing_state = request.form.get('billing_state')
     billing_zip = request.form.get('billing_zip')
     billing_country = request.form.get('billing_country')
-    
-    # Extract payment information from the form
+
+    # Extract payment information from the form (you might need to store this securely or tokenize)
     card_name = request.form.get('card_name')
     card_number = request.form.get('card_number')
     card_expiry = request.form.get('card_expiry')
@@ -226,16 +357,41 @@ def process_checkout():
     # Retrieve the cart items
     cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
     total_price = 0
-    
+
+    # Create an Order record
+    order = Order(
+        user_id=current_user.id,
+        order_date=datetime.utcnow(),
+        total_price=total_price,
+        billing_name=billing_name,
+        billing_email=billing_email,
+        billing_address=billing_address,
+        billing_city=billing_city,
+        billing_state=billing_state,
+        billing_zip=billing_zip,
+        billing_country=billing_country,
+        status='Processing'  # Set initial order status
+    )
+    db.session.add(order)
+
     for item in cart_items:
-        # Calculate total price
         total_price += item.product.price * item.quantity
+        
+        # Create OrderDetail
+        order_detail = OrderDetail(
+            order_id=order.id,
+            product_id=item.product_id,
+            quantity=item.quantity,
+            price=item.product.price,
+            discount=item.product.sale_percentage  # Assuming discount is a sale percentage
+        )
+        db.session.add(order_detail)
         
         # Create SalesRecord
         sales_record = SalesRecord(
             product_id=item.product_id,
             quantity_sold=item.quantity,
-            sale_date=datetime.utcnow()  # Update with current date and time
+            sale_date=datetime.utcnow()
         )
         db.session.add(sales_record)
         
@@ -248,17 +404,22 @@ def process_checkout():
             product_name=item.product.name,
             product_price=item.product.price,
             quantity=item.quantity,
-            purchase_date=datetime.utcnow()  # Update with current date and time
+            purchase_date=datetime.utcnow()
         )
         db.session.add(purchase_history)
         
         # Remove the item from the cart
         db.session.delete(item)
+
+    # Update the total price in the order
+    order.total_price = total_price
     
     db.session.commit()
 
     # Render the confirmation page with the correct total price
     return render_template('proceed_checkout.html', total_price=total_price)
+
+
 
 
 @app.route('/purchase_history')
